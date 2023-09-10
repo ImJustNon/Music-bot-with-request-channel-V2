@@ -30,6 +30,11 @@ const config = {
             ],
         },
     },
+    assets: {
+        embeds: {
+            color: `#8332a8`,
+        },
+    }
 }
 
 const client = new Client({
@@ -66,10 +71,7 @@ const client = new Client({
 })();
 
 // create player manager
-const manager = new MoonlinkManager(config.player.lavalink.nodes, {
-    autoResume: true, 
-    resumeTimeout: 1000,
-}, (guild, sPayload) => {
+const manager = new MoonlinkManager(config.player.lavalink.nodes, {}, (guild, sPayload) => {
     client.guilds.cache.get(guild).shard.send(JSON.parse(sPayload));
 });
 
@@ -85,13 +87,46 @@ manager.on('nodeCreate', async(node) => {
 });
 // ===================================================================== Moonlink Player Events =====================================================================
 manager.on('trackStart', async(player, track) =>{
-    const getChannel = client.channels.cache.get(player.textChannel);
-    await getChannel.send(`🟢 | กำลังเล่น : \` ${track.title} \` อยู่ที่ช่อง <#${player.voiceChannel}>`);
+    const getChannel = await client.channels.cache.get(player.textChannel);
+    await getChannel.send({
+        embeds: [
+            new EmbedBuilder().setColor(config.assets.embeds.color).setThumbnail(track.artworkUrl).addFields([
+                {
+                    name: `🎵 | กำลังเล่นเพลง`,
+                    value: `[${track.title}](${track.uri})`, 
+                    inline: false,
+                },
+                {
+                    name: `🏡 | ในห้อง`,
+                    value: `<#${player.voiceChannel}>`, 
+                    inline: true,
+                },
+                {
+                    name: `⏲️ | ความยาว`,
+                    value: `\`${convertTime(track.duration)}\``, 
+                    inline: true,
+                },
+                {
+                    name: `✨ | เผยเเพร่โดย`,
+                    value: `\`${track.author}\``, 
+                    inline: true,
+                },
+            ])
+        ],
+    });
+});
+
+manager.on("debug", (info) => {
+    console.log(info);
 });
 
 manager.on('trackEnd', async(player, track) =>{
     const getChannel = client.channels.cache.get(player.textChannel);
-    await getChannel.send(`🟡 | คิวหมดเเล้ว`);
+    await getChannel.send({ 
+        embeds: [
+            new EmbedBuilder().setColor(config.assets.embeds.color).setDescription(`🟡 | คิวหมดเเล้ว`).setFooter({ text: client.user.username }).setTimestamp(),
+        ] 
+    });
 });
 
 // ===================================================================== Discord Events =====================================================================
@@ -230,4 +265,21 @@ async function UpdateActivity() {
             });
         }
     }, 10 * 1000);
+}
+
+function convertTime(duration){
+    var milliseconds = parseInt((duration % 1000) / 100);
+    var	seconds = parseInt((duration / 1000) % 60);
+    var	minutes = parseInt((duration / (1000 * 60)) % 60);
+    var hours = parseInt((duration / (1000 * 60 * 60)) % 24);
+
+    hours = (hours < 10) ? "0" + hours : hours;
+    minutes = (minutes < 10) ? "0" + minutes : minutes;
+    seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+    if (duration < 3600000) {
+      return minutes + ":" + seconds;
+    } else {
+      return hours + ":" + minutes + ":" + seconds;
+    }
 }
